@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+<h3>109th Senate Roll Call</h3>
+<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.14.2/highlight.min.js"></script>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+</head>
+<body>
+<p id="Q1">
+    <svg id="senate" height="300" width="600" >
+    </svg>
+</p>
+<script>
+const requestData = async function(){
+    const senateNodes = await d3.csv("./datasets/senate.109.rollcall.nodes.csv");
+    const senateEdges = await d3.csv("./datasets/senate.109.rollcall.edges.csv");
+    console.log(senateEdges);
+    console.log(senateNodes);
+    const svg = d3.select("#senate");
+            const width = svg.attr("width");
+            const height = svg.attr("height");
+    const layer=d3.select("#senate")
+                  .append("g");
+           
+    var senateScale=d3.scaleOrdinal()
+                      .domain(["Dem","Rep","Ind"])
+                      .range(["blue", "red", "yellow"]);
+    
+   
+var senateSimulation = d3.forceSimulation()
+                             
+                                
+                                .nodes(senateNodes)
+                                .force("links", d3.forceLink().links(senateEdges).id(d=>d.icpsr))
+                                .force("repulse", d3.forceManyBody()
+                                                    .strength(-30))
+                               
+                                 .force("xpos", d3.forceX()
+                                                  .x( d=>{if(d.party=="Dem"){return width*0.25} 
+                                                     else if(d.party=="Rep"){return width*0.75}
+                                                     else if (d.party=="Ind"){return width*0.5}} )
+                                                  .strength( 0.05 ) )
+                        
+                                 .force("ypos", d3.forceY()
+                                                  .y(height/2.0 )
+                                                  .strength( 0.05 ) )
+                      
+                                 .force("collision", d3.forceCollide()
+                                                       .radius(2)
+                                                       .iterations(2) )
+                                
+                                .on("tick", render);
+
+
+
+    function render() {
+     
+  let lines =layer.selectAll("line.link").data(senateEdges)
+                         .join(enter=>{enter.append("line")
+                         .attr("class","link")
+                         .attr("stroke", "#333")
+                         })
+                         .attr("x1",d=>d.source.x).attr("x2", d=>d.target.x)
+                         .attr("y1",d=>d.source.y).attr("y2", d=>d.target.y);
+
+
+  let circles=layer.selectAll("circle").data(senateNodes)
+                   .join(
+                enter => {enter.append("circle")
+                   .attr("class","node")
+                   .attr("r",5)
+                   .attr("cx",0)
+                   .attr("cy",0)
+                   .attr("fill", d=>senateScale(d.party))
+                   .call( d3.drag().on("start",dragstart)
+                   .on("drag",dragging)
+                   .on("end",dragend) )
+                          }
+              )
+             .attr("transform", d=>"translate("+d.x+","+d.y+")");
+    };
+
+var label = layer.append("text").attr("icpsr","label");
+
+function dragstart(d) {
+
+  if (!d3.event.active) {
+
+    label.text(d.name);
+    senateSimulation.alphaTarget(0.08).restart();
+  }
+
+  d.fx = d3.event.x;
+  d.fy = d3.event.y;
+
+  label.attr("x",d3.event.x + 5).attr("y",d3.event.y);
+
+}
+function dragging(d) {
+
+  d.fx = d3.event.x;
+  d.fy = d3.event.y;
+  label.attr("x",d3.event.x + 5).attr("y",d3.event.y);
+
+}
+function dragend(d) {
+
+  if (!d3.event.active) {
+    senateSimulation.alphaTarget(0); 
+    label.text("");
+  }
+
+
+  d.fx = null;
+  d.fy = null;
+
+
+};
+};
+requestData();
+</script>
+</body>
+</html>
